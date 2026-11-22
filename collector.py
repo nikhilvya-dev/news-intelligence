@@ -73,6 +73,52 @@ def entry_timestamp(entry: dict) -> tuple[datetime | None, str | None]:
     return None, None
 
 
+
+def article_page_timestamp(url: str) -> tuple[datetime | None, str | None]:
+    """Read common published-date metadata from an article page when its RSS item omits dates."""
+    try:
+        req = urllib.request.Request(url, headers={
+            "User-Agent": USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml",
+            "Accept-Encoding": "identity",
+        })
+        with urllib.request.urlopen(req, timeout=10) as response:
+            body = response.read(2 * 1024 * 1024 + 1)
+        if len(body) > 2 * 1024 * 1024:
+            body = body[:2 * 1024 * 1024]
+        page = body.decode("utf-8", errors="replace")
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+        return None, None
+
+    candidates = []
+    for tag in re.findall(r"<meta\\b[^>]*>", page, flags=re.IGNORECASE):
+        attrs = {
+            key.lower(): html.unescape(value)
+            for key, value in re.findall(r"""([\\w:.-]+)\\s*=\\s*["']([^"']*)["']""", tag)
+        }
+        key = (attrs.get("property") or attrs.get("name") or "").lower()
+        if key in {"article:published_time", "datepublished", "date"} and attrs.get("content"):
+            candidates.append((attrs["content"], key))
+    for value in re.findall(r"""["']datePublished["']\\s*:\\s*["']([^"']+)["']""", page, flags=re.IGNORECASE):
+        candidates.append((value, "jsonld:datePublished"))
+    for value in re.findall(r"""<time\\b[^>]*datetime=["']([^"']+)["']""", page, flags=re.IGNORECASE):
+        candidates.append((value, "time:datetime"))
+
+    for value, source in candidates:
+        try:
+            text_value = value.strip()
+            try:
+                parsed = datetime.fromisoformat(text_value.replace("Z", "+00:00"))
+            except ValueError:
+                parsed = email.utils.parsedate_to_datetime(text_value)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=UTC)
+            return parsed.astimezone(UTC), f"article_page:{source}"
+        except (TypeError, ValueError, OverflowError):
+            continue
+    return None, None
+
+
 def canonical_url(raw: str) -> str:
     if not raw:
         return ""
@@ -131,10 +177,12 @@ def parse_feed(url: str, index: int, start: datetime, now: datetime) -> tuple[di
             status["warning"] = clean_text(str(parsed.get("bozo_exception", "Feed has parse warnings")))[:500]
         articles = []
         for entry in entries:
+            link = canonical_url(str(entry.get("link", "")))
             stamp, date_source = entry_timestamp(entry)
+            if stamp is None and urllib.parse.urlsplit(url).hostname == "developers.googleblog.com" and link:
+                stamp, date_source = article_page_timestamp(link)
             if stamp and not (start <= stamp <= now):
                 continue
-            link = canonical_url(str(entry.get("link", "")))
             title = clean_text(entry.get("title")) or "(untitled entry)"
             # RSS summary/description and Atom content commonly carry the arXiv abstract.
             description = clean_text(entry.get("summary") or entry.get("description"))
