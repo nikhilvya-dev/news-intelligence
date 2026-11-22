@@ -193,6 +193,31 @@ def make_topic_page(topic: str, label: str, date_label: str, items: list[dict]) 
     return "\n".join(pieces).strip() + "\n"
 
 
+
+def make_topic_html(label: str, date_label: str, items: list[dict]) -> str:
+    cards = []
+    for article in items:
+        date = article["display_time_et"]
+        description = article["description"] or "No description supplied."
+        abstract = f"<p><strong>Abstract:</strong> {esc(description)}</p>" if article["abstract"] else ""
+        cards.append(
+            f"<article><h2><a href=\"{esc(article['url'])}\">{esc(article['title'])}</a></h2>"
+            f"<p><strong>Source:</strong> {esc(article['source'])} · "
+            f"<strong>Published:</strong> {esc(date)} · "
+            f"<a href=\"{esc(article['feed_url'])}\">Feed</a></p>"
+            f"<p>{esc(description)}</p>{abstract}</article>"
+        )
+    intro = f"{len(items)} items, including {sum(1 for a in items if not a['timestamp'])} undated."
+    return (
+        "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width\">"
+        f"<title>{esc(label)} — {esc(date_label)}</title>"
+        "<style>body{font:16px/1.55 system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;color:#202124}"
+        "article{border-top:1px solid #ddd;padding:1rem 0}h1{line-height:1.2}a{color:#0757a6}</style>"
+        f"<main><p><a href=\"../../index.html\">← Latest report</a></p>"
+        f"<h1>{esc(label)} — {esc(date_label)}</h1><p>{esc(intro)}</p>{''.join(cards)}</main></html>"
+    )
+
 def main() -> None:
     now = datetime.now(UTC)
     local_today = now.astimezone(ET).date()
@@ -235,6 +260,7 @@ def main() -> None:
         items = [a for a in articles if a["topic"] == topic]
         topic_counts[topic] = len(items)
         write_text(report_dir / f"{topic}.md", make_topic_page(topic, label, date_key, items))
+        write_text(report_dir / f"{topic}.html", make_topic_html(label, date_key, items))
 
     ok = sum(1 for f in coverage if f["status"].startswith("success"))
     failed = len(coverage) - ok
@@ -257,7 +283,7 @@ def main() -> None:
     for f in coverage:
         issue = f["error"] or f["warning"] or ""
         status_rows.append(f"| {f['index']} | [{esc(f['feed_title'] or f['url'])}]({f['url']}) | {f['topic_label']} | {f['status']} | {f['http_status'] or ''} | {f['entries_seen']} | {f['items_in_window']} | {f['items_undated']} | {issue.replace('|', '/') } |")
-    links = "\n".join(f"- [{TOPICS[t][2]} ({topic_counts[t]})](reports/{date_key}/{t}.md)" for t in TOPICS)
+    links = "\n".join(f"- [{TOPICS[t][2]} ({topic_counts[t]})](reports/{date_key}/{t}.html)" for t in TOPICS)
     coverage_md = f"""# Feed coverage — {date_key}
 
 Generated: {summary['generated_at']}  
@@ -273,7 +299,30 @@ Unique collected entries: {len(articles)} · undated: {summary['undated_items']}
 
 {chr(10).join(status_rows)}
 """
+
     write_text(OUT / "coverage.md", coverage_md)
+    rows = "".join(
+        f"<tr><td>{f['index']}</td><td><a href=\"{esc(f['url'])}\">{esc(f['feed_title'] or f['url'])}</a></td>"
+        f"<td>{esc(f['topic_label'])}</td><td>{esc(f['status'])}</td><td>{esc(f['http_status'] or '')}</td>"
+        f"<td>{f['entries_seen']}</td><td>{f['items_in_window']}</td><td>{f['items_undated']}</td>"
+        f"<td>{esc(f['error'] or f['warning'] or '')}</td></tr>" for f in coverage
+    )
+    coverage_html = (
+        "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\">"
+        f"<title>Feed coverage — {date_key}</title>"
+        "<style>body{font:15px/1.45 system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#202124}"
+        "table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{padding:.45rem;border:1px solid #ddd;text-align:left;vertical-align:top}"
+        "th{background:#f3f5f7}td:nth-child(2){min-width:220px}a{color:#0757a6}</style>"
+        f"<main><p><a href=\"index.html\">← Latest report</a></p><h1>Feed coverage — {date_key}</h1>"
+        f"<p>Generated {esc(summary['generated_at'])}. Window starts {esc(summary['window_start_local'])} (America/New_York). "
+        f"{len(feeds)} attempted; {ok} succeeded; {failed} failed; {len(articles)} unique entries; {summary['undated_items']} undated.</p>"
+        "<p><a href=\"coverage.json\">Coverage JSON</a></p>"
+        "<div style=\"overflow-x:auto\"><table><thead><tr><th>#</th><th>Feed</th><th>Topic</th><th>Status</th><th>HTTP</th>"
+        "<th>Seen</th><th>In window</th><th>Undated</th><th>Error / warning</th></tr></thead><tbody>"
+        f"{rows}</tbody></table></div></main></html>"
+    )
+    write_text(OUT / "coverage.html", coverage_html)
+
     index_md = f"""# News intelligence — {date_key}
 
 Generated: {summary['generated_at']}  
@@ -287,8 +336,8 @@ Collection window: since {summary['window_start_local']} (America/New_York)
 """
     write_text(OUT / "index.md", index_md)
     # Small HTML landing page makes navigation clear in a browser; Markdown/JSON remain easy for retrieval.
-    topic_links = "".join(f'<li><a href="reports/{date_key}/{t}.md">{esc(TOPICS[t][2])}</a> ({topic_counts[t]} items)</li>' for t in TOPICS)
-    write_text(OUT / "index.html", f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>News intelligence — {date_key}</title><main><h1>News intelligence — {date_key}</h1><p>Generated {esc(summary['generated_at'])}. Window starts {esc(summary['window_start_local'])} (America/New_York).</p><ul>{topic_links}</ul><p><a href="coverage.md">Feed coverage audit</a> · <a href="coverage.json">Coverage JSON</a> · <a href="reports/{date_key}/articles.json">Articles JSON</a></p><p>{len(feeds)} feeds attempted; {ok} succeeded and {failed} failed; {len(articles)} unique entries ({undated} undated).</p></main></html>""")
+    topic_links = "".join(f'<li><a href="reports/{date_key}/{t}.html">{esc(TOPICS[t][2])}</a> ({topic_counts[t]} items)</li>' for t in TOPICS)
+    write_text(OUT / "index.html", f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>News intelligence — {date_key}</title><main><h1>News intelligence — {date_key}</h1><p>Generated {esc(summary['generated_at'])}. Window starts {esc(summary['window_start_local'])} (America/New_York).</p><ul>{topic_links}</ul><p><a href="coverage.html">Feed coverage audit</a> · <a href="coverage.json">Coverage JSON</a> · <a href="reports/{date_key}/articles.json">Articles JSON</a></p><p>{len(feeds)} feeds attempted; {ok} succeeded and {failed} failed; {len(articles)} unique entries ({undated} undated).</p></main></html>""")
     write_text(OUT / ".nojekyll", "")
     print(f"Finished: {len(feeds)} feeds; {ok} succeeded; {failed} failed; {len(articles)} unique items.", flush=True)
 
