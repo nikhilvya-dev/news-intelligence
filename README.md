@@ -1,1 +1,1 @@
-# aap-news-intelligence
+# news-intelligence
