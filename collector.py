@@ -25,7 +25,7 @@ ET = ZoneInfo("America/New_York")
 UTC = timezone.utc
 USER_AGENT = "news-intelligence-rss-collector/1.0 (+https://github.com/nikhilvya-dev/news-intelligence)"
 TIMEOUT_SECONDS = 25
-MAX_BYTES = 8 * 1024 * 1024
+MAX_BYTES = 32 * 1024 * 1024
 TOPICS = {
     "ai-research": (1, 25, "AI research"),
     "cloud-industry": (26, 45, "Cloud and industry"),
@@ -60,7 +60,11 @@ def entry_timestamp(entry: dict) -> tuple[datetime | None, str | None]:
         if not value:
             continue
         try:
-            parsed = email.utils.parsedate_to_datetime(str(value))
+            text_value = str(value).strip()
+            try:
+                parsed = datetime.fromisoformat(text_value.replace("Z", "+00:00"))
+            except ValueError:
+                parsed = email.utils.parsedate_to_datetime(text_value)
             if parsed.tzinfo is None:
                 parsed = parsed.replace(tzinfo=UTC)
             return parsed.astimezone(UTC), field
@@ -150,7 +154,11 @@ def parse_feed(url: str, index: int, start: datetime, now: datetime) -> tuple[di
                 status["items_undated"] += 1
             else:
                 status["items_in_window"] += 1
-        status["status"] = "success_with_warnings" if status["warning"] else "success"
+        if status["warning"] and not entries:
+            status["status"] = "failed_parse"
+            status["error"] = "Feed returned no readable entries; see parser warning."
+        else:
+            status["status"] = "success_with_warnings" if status["warning"] else "success"
         return status, articles
     except urllib.error.HTTPError as exc:
         status["http_status"] = exc.code
