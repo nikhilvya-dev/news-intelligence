@@ -34,7 +34,7 @@ TOPICS = {
 }
 TRACKING_KEYS = {"fbclid", "gclid", "mc_cid", "mc_eid"}
 TAG_RE = re.compile(r"<[^>]+>")
-SPACE_RE = re.compile(r"\\s+")
+SPACE_RE = re.compile(r"\s+")
 
 
 def clean_text(value: object) -> str:
