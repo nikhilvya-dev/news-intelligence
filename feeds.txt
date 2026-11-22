@@ -14,7 +14,7 @@ https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_cohere.xml
 https://ai.stanford.edu/blog/feed.xml
 https://magazine.sebastianraschka.com/feed
 https://rss.arxiv.org/rss/cs.AI
-https://deepmind.google/discover/blog/feed
+https://research.google/blog/rss/
 https://blog.google/technology/ai/rss/
 https://huggingface.co/blog/feed.xml
 https://jack-clark.net/feed/
@@ -26,7 +26,7 @@ https://techxplore.com/rss-feed/machine-learning-ai-news/
 https://feeds.arstechnica.com/arstechnica/index
 https://aws.amazon.com/blogs/machine-learning/feed/
 https://blog.cloudflare.com/rss/
-https://www.digitalocean.com/blog/feed.atom
+https://feed.infoq.com/
 https://feed.infoq.com/
 https://azure.microsoft.com/en-us/blog/feed/
 https://aws.amazon.com/blogs/networking-and-content-delivery/feed/
@@ -53,7 +53,7 @@ https://announcements.ansiblecloud.redhat.com/feed.atom
 https://packetpushers.net/feed/
 https://atlassianblog.wpengine.com/feed
 https://www.uipath.com/blog/rss.xml
-https://www.activepieces.com/blog/rss.xml
+https://blog.n8n.io/rss/
 https://blog.n8n.io/rss/
 https://www.microsoft.com/en-us/power-platform/blog/power-automate/feed/
 https://www.workato.com/the-connector/feed/
@@ -72,7 +72,7 @@ https://review.firstround.com/articles/rss
 https://www.economist.com/business/rss.xml
 https://www.lennysnewsletter.com/feed
 https://www.mckinsey.com/insights/rss
-https://productschool.com/blog/feed/
+https://www.producttalk.org/feed/
 https://www.producttalk.org/feed/
 https://www.sequoiacap.com/feed/
 https://www.svpg.com/feed/
