@@ -28,9 +28,9 @@ TIMEOUT_SECONDS = 25
 MAX_BYTES = 32 * 1024 * 1024
 TOPICS = {
     "ai-research": (1, 25, "AI research"),
-    "cloud-industry": (26, 45, "Cloud and industry"),
-    "automation": (46, 68, "Automation and infrastructure"),
-    "product-strategy": (69, 80, "Business and product strategy"),
+    "cloud-industry": (26, 44, "Cloud and industry"),
+    "automation": (45, 64, "Automation and infrastructure"),
+    "product-strategy": (65, 85, "Business and product strategy"),
 }
 TRACKING_KEYS = {"fbclid", "gclid", "mc_cid", "mc_eid"}
 TAG_RE = re.compile(r"<[^>]+>")
