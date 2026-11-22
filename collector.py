@@ -91,17 +91,17 @@ def article_page_timestamp(url: str) -> tuple[datetime | None, str | None]:
         return None, None
 
     candidates = []
-    for tag in re.findall(r"<meta\\b[^>]*>", page, flags=re.IGNORECASE):
+    for tag in re.findall(r"<meta\b[^>]*>", page, flags=re.IGNORECASE):
         attrs = {
             key.lower(): html.unescape(value)
-            for key, value in re.findall(r"""([\\w:.-]+)\\s*=\\s*["']([^"']*)["']""", tag)
+            for key, value in re.findall(r"""([\w:.-]+)\s*=\s*["']([^"']*)["']""", tag)
         }
         key = (attrs.get("property") or attrs.get("name") or "").lower()
         if key in {"article:published_time", "datepublished", "date"} and attrs.get("content"):
             candidates.append((attrs["content"], key))
-    for value in re.findall(r"""["']datePublished["']\\s*:\\s*["']([^"']+)["']""", page, flags=re.IGNORECASE):
+    for value in re.findall(r"""["']datePublished["']\s*:\s*["']([^"']+)["']""", page, flags=re.IGNORECASE):
         candidates.append((value, "jsonld:datePublished"))
-    for value in re.findall(r"""<time\\b[^>]*datetime=["']([^"']+)["']""", page, flags=re.IGNORECASE):
+    for value in re.findall(r"""<time\b[^>]*datetime=["']([^"']+)["']""", page, flags=re.IGNORECASE):
         candidates.append((value, "time:datetime"))
 
     for value, source in candidates:
